@@ -32,7 +32,7 @@ They share no files, so executing-plans runs them in parallel worktrees.
 
 ### T-4: Status query on the expense list (MVP)
 - Files: src/app.ts, test/expenses.test.ts
-- Change: GET /expenses accepts ?status= from the four statuses
+- Change: GET /expenses accepts ?status= from the four statuses; GET /me returns the caller's id, email, and role
 - Verify: test "AC-6" passes
 - Covers: AC-6
 - Depends on: none

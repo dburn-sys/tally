@@ -142,10 +142,26 @@ export function buildApp(options: AppOptions = {}) {
       return reply.code(201).send(toApi(rows[0]));
     });
 
-    secured.get("/expenses", async (req) => {
-      const all = seesAll(req.user!);
-      const where = all ? "" : "WHERE user_id = $1";
-      const params = all ? [] : [req.user!.id];
+    secured.get("/me", async (req) => {
+      const { id, email, role } = req.user!;
+      return { id, email, role };
+    });
+
+    secured.get("/expenses", {
+      schema: {
+        querystring: {
+          type: "object",
+          properties: { status: { type: "string", enum: ["submitted", "approved", "rejected", "paid"] } },
+          additionalProperties: false,
+        },
+      },
+    }, async (req) => {
+      const { status } = req.query as { status?: string };
+      const conditions: string[] = [];
+      const params: string[] = [];
+      if (!seesAll(req.user!)) { params.push(req.user!.id); conditions.push(`user_id = $${params.length}`); }
+      if (status) { params.push(status); conditions.push(`status = $${params.length}`); }
+      const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
       return withCompany(req.user!.companyId, async (db) => {
         const totals = await db.query<{ total: string }>(
           `SELECT coalesce(sum(amount_cents), 0)::text AS total FROM expenses ${where}`, params);
