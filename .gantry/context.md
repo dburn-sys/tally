@@ -2,7 +2,7 @@
 gantry: enabled
 project: tally
 test_command: npm test
-source_dirs: src
+not_source: test/, docs/, .gantry/, .github/, *.md, package.json, package-lock.json, tsconfig*.json, *.config.*, Dockerfile*, docker-compose*.yml, .env.example, .claude/
 ---
 # Project state
 
