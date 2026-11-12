@@ -1,0 +1,9 @@
+{
+  "ocrText": "METRO CABS\nFare 31.20\nThank you for riding",
+  "expect": {
+    "merchant": "Metro Cabs",
+    "amount": "31.20",
+    "spentOn": null,
+    "category": "travel"
+  }
+}

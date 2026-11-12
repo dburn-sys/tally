@@ -1,0 +1,9 @@
+{
+  "ocrText": "~~ #$ .. 4?.? ////",
+  "expect": {
+    "merchant": null,
+    "amount": null,
+    "spentOn": null,
+    "category": null
+  }
+}

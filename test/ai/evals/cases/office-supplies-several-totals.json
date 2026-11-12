@@ -1,0 +1,9 @@
+{
+  "ocrText": "PAPERWORKS\nPrinter paper x2   18.98\nPens               4.49\nSUBTOTAL          23.47\nTAX 7%             1.64\nTOTAL             25.11\nCARD TOTAL        25.11\n2026-02-27",
+  "expect": {
+    "merchant": "Paperworks",
+    "amount": "25.11",
+    "spentOn": "2026-02-27",
+    "category": "supplies"
+  }
+}

@@ -7,7 +7,8 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc -p .",
     "migrate": "tsx scripts/migrate.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "eval:receipts": "tsx test/ai/evals/run.ts"
   },
   "dependencies": {
     "fastify": "^5.12.8",

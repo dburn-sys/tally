@@ -1,0 +1,9 @@
+{
+  "ocrText": "BLUE DOOR CAFE\n412 Main St\n2x flat white   9.00\nsandwich       12.50\nSubtotal       21.50\nTip             1.90\nTOTAL          23.40\n03/02/2026 08:14",
+  "expect": {
+    "merchant": "Blue Door Cafe",
+    "amount": "23.40",
+    "spentOn": "2026-03-02",
+    "category": "meals"
+  }
+}
