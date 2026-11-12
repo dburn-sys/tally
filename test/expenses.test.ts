@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { buildApp } from "../src/app.js";
 import { pool } from "../src/db.js";
+import { adminPool } from "../scripts/admin-db.js";
 import { signedInAs } from "./fixtures/auth.js";
 
 let headers: Record<string, string> = {};
@@ -10,11 +11,11 @@ const app = buildApp();
 beforeAll(async () => {
   await app.ready();
   ({ headers } = await signedInAs("approver"));
-  await pool.query("TRUNCATE expenses CASCADE");
+  await adminPool.query("TRUNCATE expenses CASCADE");
 });
 afterAll(async () => {
   await app.close();
-  await pool.end();
+  await pool.end(); await adminPool.end();
 });
 
 describe("POST /expenses", () => {

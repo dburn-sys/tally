@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { buildApp } from "../src/app.js";
 import { pool } from "../src/db.js";
+import { adminPool } from "../scripts/admin-db.js";
 import { signedInAs } from "./fixtures/auth.js";
 
 let headers: Record<string, string> = {};
@@ -13,7 +14,7 @@ const post = (payload: object) => app.inject({ headers, method: "POST", url: "/e
 
 beforeAll(async () => { await app.ready();
   ({ headers } = await signedInAs("approver")); });
-afterAll(async () => { await app.close(); await pool.end(); });
+afterAll(async () => { await app.close(); await pool.end(); await adminPool.end(); });
 
 describe("expense categories and validation", () => {
   it("OB-1: creates an expense with a category", async () => {

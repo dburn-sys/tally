@@ -1,10 +1,10 @@
 import Fastify, { type FastifyReply, type FastifyRequest } from "fastify";
-import { pool } from "./db.js";
+import { withCompany } from "./db.js";
 import { fromCents, toCents } from "./money.js";
 import { hashApiKey, newApiKey } from "./auth/apikeys.js";
 import { verifyPassword } from "./auth/password.js";
 import { createSessionToken } from "./auth/session.js";
-import { userFromHeaders, type User } from "./auth/users.js";
+import { userForLogin, userFromHeaders, type User } from "./auth/users.js";
 import { history, transition, TransitionError, type Action } from "./approvals/service.js";
 
 export const CATEGORIES = ["travel", "meals", "lodging", "supplies", "other"] as const;
@@ -67,12 +67,10 @@ export function buildApp() {
     },
   }, async (req, reply) => {
     const { email, password } = req.body as { email: string; password: string };
-    const { rows } = await pool.query<{ id: string; password_hash: string }>(
-      "SELECT id, password_hash FROM users WHERE email = $1", [email.toLowerCase()],
-    );
-    const ok = rows[0] ? await verifyPassword(password, rows[0].password_hash) : false;
-    if (!ok) return reply.code(401).send({ error: "invalid email or password" });
-    return { token: createSessionToken(rows[0].id) };
+    const user = await userForLogin(email);
+    const ok = user ? await verifyPassword(password, user.password_hash) : false;
+    if (!ok || !user) return reply.code(401).send({ error: "invalid email or password" });
+    return { token: createSessionToken(user.id) };
   });
 
   app.register(async (secured) => {
@@ -80,8 +78,8 @@ export function buildApp() {
 
     secured.post("/api-keys", async (req, reply) => {
       const key = newApiKey();
-      await pool.query("INSERT INTO api_keys (user_id, key_hash) VALUES ($1, $2)",
-        [req.user!.id, hashApiKey(key)]);
+      await withCompany(req.user!.companyId, (db) =>
+        db.query("INSERT INTO api_keys (user_id, key_hash) VALUES ($1, $2)", [req.user!.id, hashApiKey(key)]));
       return reply.code(201).send({ key });   // shown once; only the hash is stored
     });
 
@@ -107,11 +105,11 @@ export function buildApp() {
       }
       const today = new Date().toISOString().slice(0, 10);
       if (b.spentOn > today) return reply.code(400).send({ error: "spentOn can't be in the future" });
-      const { rows } = await pool.query<ExpenseRow>(
+      const { rows } = await withCompany(req.user!.companyId, (db) => db.query<ExpenseRow>(
         `INSERT INTO expenses (description, category, amount_cents, currency, spent_on, user_id)
          VALUES ($1, $2, $3, $4, $5, $6) RETURNING ${COLUMNS}`,
         [b.description, b.category, cents, b.currency, b.spentOn, req.user!.id],
-      );
+      ));
       return reply.code(201).send(toApi(rows[0]));
     });
 
@@ -119,17 +117,20 @@ export function buildApp() {
       const all = seesAll(req.user!);
       const where = all ? "" : "WHERE user_id = $1";
       const params = all ? [] : [req.user!.id];
-      const totals = await pool.query<{ total: string }>(
-        `SELECT coalesce(sum(amount_cents), 0)::text AS total FROM expenses ${where}`, params);
-      const { rows } = await pool.query<ExpenseRow>(
-        `SELECT ${COLUMNS} FROM expenses ${where} ORDER BY created_at DESC`, params);
-      return { expenses: rows.map(toApi), total: fromCents(totals.rows[0].total) };
+      return withCompany(req.user!.companyId, async (db) => {
+        const totals = await db.query<{ total: string }>(
+          `SELECT coalesce(sum(amount_cents), 0)::text AS total FROM expenses ${where}`, params);
+        const { rows } = await db.query<ExpenseRow>(
+          `SELECT ${COLUMNS} FROM expenses ${where} ORDER BY created_at DESC`, params);
+        return { expenses: rows.map(toApi), total: fromCents(totals.rows[0].total) };
+      });
     });
 
     secured.get("/expenses/:id", async (req, reply) => {
       const { id } = req.params as { id: string };
       if (!UUID.test(id)) return reply.code(400).send({ error: "id must be a UUID" });
-      const { rows } = await pool.query<ExpenseRow>(`SELECT ${COLUMNS} FROM expenses WHERE id = $1`, [id]);
+      const { rows } = await withCompany(req.user!.companyId, (db) =>
+        db.query<ExpenseRow>(`SELECT ${COLUMNS} FROM expenses WHERE id = $1`, [id]));
       const row = rows[0];
       if (!row || (!seesAll(req.user!) && row.user_id !== req.user!.id)) {
         return reply.code(404).send({ error: "not found" });
@@ -142,7 +143,8 @@ export function buildApp() {
         const { id } = req.params as { id: string };
         if (!UUID.test(id)) return reply.code(400).send({ error: "id must be a UUID" });
         try {
-          return { status: await transition(id, req.user!, action) };
+          const status = await withCompany(req.user!.companyId, (db) => transition(db, id, req.user!, action));
+          return { status };
         } catch (err) {
           if (err instanceof TransitionError) return reply.code(err.httpStatus).send({ error: err.message });
           throw err;
@@ -153,7 +155,7 @@ export function buildApp() {
     secured.get("/expenses/:id/history", async (req, reply) => {
       const { id } = req.params as { id: string };
       if (!UUID.test(id)) return reply.code(400).send({ error: "id must be a UUID" });
-      return history(id);
+      return withCompany(req.user!.companyId, (db) => history(db, id));
     });
   });
 
