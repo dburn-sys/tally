@@ -62,3 +62,20 @@ describe("GET /expenses/:id", () => {
     expect(res.statusCode).toBe(400);
   });
 });
+
+describe("GET /expenses?status=", () => {
+  it("AC-6: returns only expenses in that status", async () => {
+    const created = await app.inject({ headers, method: "POST", url: "/expenses",
+      payload: { description: "Status filter", category: "other", amount: "1.00", currency: "USD", spentOn: "2026-03-02" } });
+    expect(created.statusCode).toBe(201);
+    const submitted = (await app.inject({ headers, method: "GET", url: "/expenses?status=submitted" })).json();
+    expect(submitted.expenses.length).toBeGreaterThan(0);
+    expect(submitted.expenses.every((e: { status: string }) => e.status === "submitted")).toBe(true);
+    const paid = (await app.inject({ headers, method: "GET", url: "/expenses?status=paid" })).json();
+    expect(paid.expenses.map((e: { id: string }) => e.id)).not.toContain(created.json().id);
+  });
+  it("AC-6: an unknown status is 400", async () => {
+    const res = await app.inject({ headers, method: "GET", url: "/expenses?status=lost" });
+    expect(res.statusCode).toBe(400);
+  });
+});
