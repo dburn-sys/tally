@@ -63,3 +63,14 @@ describe("roles and API keys", () => {
     expect(rows[0].n).toBe(0);
   });
 });
+
+describe("GET /me", () => {
+  it("returns the caller's id, email, and role, and nothing else", async () => {
+    const { user, headers } = await signedInAs("approver");
+    const res = await app.inject({ method: "GET", url: "/me", headers });
+    expect(res.json()).toEqual({ id: user.id, email: user.email, role: "approver" });
+  });
+  it("requires a signed-in user", async () => {
+    expect((await app.inject({ method: "GET", url: "/me" })).statusCode).toBe(401);
+  });
+});

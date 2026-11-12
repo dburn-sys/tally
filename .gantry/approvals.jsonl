@@ -2,3 +2,4 @@
 {"at": "2026-04-22T11:02:09+00:00", "spec": "company-isolation", "session": "example", "prev": "8988df67"}
 {"at": "2026-05-04T14:20:31+00:00", "spec": "receipt-reader", "session": "example", "prev": "ab69e21d"}
 {"at": "2026-05-06T10:05:44+00:00", "spec": "payouts", "session": "example", "prev": "fef5cb7f"}
+{"at": "2026-05-20T09:12:03+00:00", "spec": "m5-dashboard-and-retries", "session": "example", "prev": "019e5b05"}

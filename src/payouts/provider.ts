@@ -11,7 +11,16 @@ export interface PaymentProvider {
   createPayout(req: PayoutRequest): Promise<{ providerRef: string }>;
 }
 
-export class ProviderError extends Error {}
+/**
+ * "refused": the provider said no; nothing was paid, and trying again won't help.
+ * "unknown": a timeout, network error, 429, or 5xx. The payment may or may not
+ * have gone through, so the only safe retry reuses the same idempotency key.
+ */
+export class ProviderError extends Error {
+  constructor(message: string, public readonly outcome: "refused" | "unknown", options?: ErrorOptions) {
+    super(message, options);
+  }
+}
 
 /**
  * Payrail's sandbox and live APIs. payoutId and companyId go in the metadata,
@@ -21,7 +30,9 @@ export class PayrailProvider implements PaymentProvider {
   constructor(private readonly apiKey: string, private readonly baseUrl: string) {}
 
   async createPayout(req: PayoutRequest): Promise<{ providerRef: string }> {
-    const res = await fetch(`${this.baseUrl}/v1/payouts`, {
+    let res: Response;
+    try {
+      res = await fetch(`${this.baseUrl}/v1/payouts`, {
       method: "POST",
       signal: AbortSignal.timeout(15_000),
       headers: {
@@ -34,18 +45,22 @@ export class PayrailProvider implements PaymentProvider {
         currency: req.currency,
         metadata: { payoutId: req.payoutId, companyId: req.companyId },
       }),
-    });
-    if (!res.ok) throw new ProviderError(`provider returned ${res.status}`);
-    const body: unknown = await res.json();
-    const id = (body as { id?: unknown }).id;
-    if (typeof id !== "string") throw new ProviderError("provider reply had no id");
+      });
+    } catch (err) {
+      throw new ProviderError("provider unreachable or timed out", "unknown", { cause: err });
+    }
+    if (res.status === 429 || res.status >= 500) throw new ProviderError(`provider returned ${res.status}`, "unknown");
+    if (!res.ok) throw new ProviderError(`provider refused the payout: ${res.status}`, "refused");
+    const body: unknown = await res.json().catch(() => null);
+    const id = (body as { id?: unknown } | null)?.id;
+    if (typeof id !== "string") throw new ProviderError("provider reply had no id", "unknown");
     return { providerRef: id };
   }
 }
 
 export const unconfiguredProvider: PaymentProvider = {
   async createPayout() {
-    throw new ProviderError("no payment provider configured");
+    throw new ProviderError("no payment provider configured", "refused");
   },
 };
 

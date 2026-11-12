@@ -13,10 +13,16 @@ import { modelFromEnv, type ModelClient } from "./ai/model.js";
 import { MAX_RECEIPT_CHARS, suggestFields } from "./ai/receipts/reader.js";
 import { providerFromEnv, type PaymentProvider } from "./payouts/provider.js";
 import { PayoutError, startPayout } from "./payouts/service.js";
+import type { RetryOptions } from "./payouts/retry.js";
 import { registerPayoutWebhook } from "./webhooks/payouts.js";
 
 export { CATEGORIES };
-export type AppOptions = { model?: ModelClient; provider?: PaymentProvider; webhookSecret?: string };
+export type AppOptions = {
+  model?: ModelClient;
+  provider?: PaymentProvider;
+  webhookSecret?: string;
+  payoutRetry?: RetryOptions;
+};
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const COLUMNS = `id, description, category, amount_cents, currency,
@@ -136,10 +142,26 @@ export function buildApp(options: AppOptions = {}) {
       return reply.code(201).send(toApi(rows[0]));
     });
 
-    secured.get("/expenses", async (req) => {
-      const all = seesAll(req.user!);
-      const where = all ? "" : "WHERE user_id = $1";
-      const params = all ? [] : [req.user!.id];
+    secured.get("/me", async (req) => {
+      const { id, email, role } = req.user!;
+      return { id, email, role };
+    });
+
+    secured.get("/expenses", {
+      schema: {
+        querystring: {
+          type: "object",
+          properties: { status: { type: "string", enum: ["submitted", "approved", "rejected", "paid"] } },
+          additionalProperties: false,
+        },
+      },
+    }, async (req) => {
+      const { status } = req.query as { status?: string };
+      const conditions: string[] = [];
+      const params: string[] = [];
+      if (!seesAll(req.user!)) { params.push(req.user!.id); conditions.push(`user_id = $${params.length}`); }
+      if (status) { params.push(status); conditions.push(`status = $${params.length}`); }
+      const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
       return withCompany(req.user!.companyId, async (db) => {
         const totals = await db.query<{ total: string }>(
           `SELECT coalesce(sum(amount_cents), 0)::text AS total FROM expenses ${where}`, params);
@@ -179,7 +201,7 @@ export function buildApp(options: AppOptions = {}) {
       const { id } = req.params as { id: string };
       if (!UUID.test(id)) return reply.code(400).send({ error: "id must be a UUID" });
       try {
-        return reply.code(202).send(await startPayout(provider, req.user!, id));
+        return reply.code(202).send(await startPayout(provider, req.user!, id, options.payoutRetry));
       } catch (err) {
         if (err instanceof PayoutError) return reply.code(err.httpStatus).send({ error: err.message });
         throw err;
