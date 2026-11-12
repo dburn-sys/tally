@@ -65,6 +65,22 @@ jobs:
           docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.24.0 \
             git /repo --redact --verbose --exit-code 1
 
+  # Chapter 20: verify the Gantry paper trail on the server, for every commit,
+  # whatever tool made it. Set the repository variable GANTRY_REPO (owner/gantry).
+  gantry-check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.GANTRY_REPO }}
+          path: .gantry-tools
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: gantry-check
+        run: python .gantry-tools/ci/gantry_check.py --branch "${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
+
   images:
     runs-on: ubuntu-24.04
     steps:
