@@ -1,6 +1,7 @@
 import { withCompany } from "../db.js";
 import type { User } from "../auth/users.js";
-import type { PaymentProvider } from "./provider.js";
+import { ProviderError, type PaymentProvider } from "./provider.js";
+import { DEFAULT_RETRY, withRetries, type RetryOptions } from "./retry.js";
 
 export class PayoutError extends Error {
   constructor(public httpStatus: 403 | 404 | 409 | 502, message: string, options?: ErrorOptions) {
@@ -13,7 +14,9 @@ export class PayoutError extends Error {
  * provider is called outside the database transaction, so a slow provider never
  * holds row locks.
  */
-export async function startPayout(provider: PaymentProvider, actor: User, expenseId: string) {
+export async function startPayout(
+  provider: PaymentProvider, actor: User, expenseId: string, retry: RetryOptions = DEFAULT_RETRY,
+) {
   if (actor.role !== "finance") throw new PayoutError(403, "only finance users can pay expenses");
   const payout = await withCompany(actor.companyId, async (db) => {
     const { rows } = await db.query<{ status: string; amount_cents: string; currency: string }>(
@@ -30,16 +33,23 @@ export async function startPayout(provider: PaymentProvider, actor: User, expens
     return { id: inserted.rows[0].id, amountCents: Number(expense.amount_cents), currency: expense.currency };
   });
 
+  const request = {
+    payoutId: payout.id, companyId: actor.companyId, amountCents: payout.amountCents, currency: payout.currency,
+  };
   try {
-    const { providerRef } = await provider.createPayout({
-      payoutId: payout.id, companyId: actor.companyId, amountCents: payout.amountCents, currency: payout.currency,
-    });
+    // Every attempt sends the same payout id, which is the provider's idempotency key.
+    const { providerRef } = await withRetries(() => provider.createPayout(request), retry);
     await withCompany(actor.companyId, (db) =>
       db.query("UPDATE payouts SET provider_ref = $1 WHERE id = $2", [providerRef, payout.id]));
-    return { payoutId: payout.id, status: "pending" as const };
+    return { payoutId: payout.id, status: "pending" as const, outcome: "submitted" as const };
   } catch (err) {
-    await withCompany(actor.companyId, (db) =>
-      db.query("UPDATE payouts SET status = 'failed' WHERE id = $1 AND status = 'pending'", [payout.id]));
-    throw new PayoutError(502, "the payment provider refused the payout; try again", { cause: err });
+    if (err instanceof ProviderError && err.outcome === "refused") {
+      await withCompany(actor.companyId, (db) =>
+        db.query("UPDATE payouts SET status = 'failed' WHERE id = $1 AND status = 'pending'", [payout.id]));
+      throw new PayoutError(502, "the payment provider refused the payout; try again", { cause: err });
+    }
+    // We don't know whether it paid. Marking it failed would let finance start a
+    // second payout and pay twice. It stays pending; the webhook settles it.
+    return { payoutId: payout.id, status: "pending" as const, outcome: "unknown" as const };
   }
 }
