@@ -28,6 +28,17 @@ From Chapter 14, Tally uses two database connections (see
   security always applies. `npm run migrate` creates its login password from
   `TALLY_APP_PASSWORD` (default `tally_app`, for local development only).
 
+## The approver dashboard (from Chapter 18)
+
+`web/` is a separate React app with its own dependencies and tests:
+
+```bash
+cd web
+npm install
+npm test          # component tests, no API needed
+npm run dev       # http://localhost:5173, with /api proxied to the API on port 3000
+```
+
 ## Notes on the chapters
 
 - **Chapter 15.** The book's bug (self-approval through API keys) comes from a
