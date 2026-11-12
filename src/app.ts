@@ -4,7 +4,8 @@ import { fromCents, toCents } from "./money.js";
 import { hashApiKey, newApiKey } from "./auth/apikeys.js";
 import { verifyPassword } from "./auth/password.js";
 import { createSessionToken } from "./auth/session.js";
-import { userForLogin, userFromHeaders, type User } from "./auth/users.js";
+import { currentUser } from "./auth/context.js";
+import { userForLogin, type User } from "./auth/users.js";
 import { history, transition, TransitionError, type Action } from "./approvals/service.js";
 
 export const CATEGORIES = ["travel", "meals", "lodging", "supplies", "other"] as const;
@@ -49,7 +50,7 @@ function seesAll(user: User): boolean {
 }
 
 async function requireUser(req: FastifyRequest, reply: FastifyReply) {
-  const user = await userFromHeaders(req.headers);
+  const user = await currentUser(req.headers);
   if (!user) return reply.code(401).send({ error: "authentication required" });
   req.user = user;
 }

@@ -27,3 +27,12 @@ From Chapter 14, Tally uses two database connections (see
 - `DATABASE_URL` connects as `tally_app`, a role that owns no tables, so row-level
   security always applies. `npm run migrate` creates its login password from
   `TALLY_APP_PASSWORD` (default `tally_app`, for local development only).
+
+## Notes on the chapters
+
+- **Chapter 15.** The book's bug (self-approval through API keys) comes from a
+  second code path that builds the current user differently. In this repo the
+  two paths already shared one lookup, so the bug doesn't reproduce. The `ch15`
+  tag still adds the regression tests from the chapter
+  (`test/approvals.apikey.test.ts`) and the fix's shape, `src/auth/context.ts`,
+  the single place that builds the current user.
