@@ -1,6 +1,7 @@
 ---
 gantry: enabled
 project: tally
+test_command: npm test
 ---
 # Project state
 
