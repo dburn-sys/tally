@@ -27,3 +27,6 @@ expenses; later, managers approve them and finance pays them out.
 - Database changes go in a new numbered file in `migrations/`. Never
   edit an existing migration.
 - Don't commit. The developer commits.
+- If a check can't run (database down, tool missing, command times
+  out), stop and tell me what failed. Never change tests, mocks, or
+  config to get around a check that couldn't run.
