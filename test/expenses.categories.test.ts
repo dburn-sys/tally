@@ -1,14 +1,18 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { buildApp } from "../src/app.js";
 import { pool } from "../src/db.js";
+import { signedInAs } from "./fixtures/auth.js";
+
+let headers: Record<string, string> = {};
 
 const app = buildApp();
 const today = new Date().toISOString().slice(0, 10);
 const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
 const valid = { description: "Dinner", category: "meals", amount: "40", currency: "USD", spentOn: "2026-03-02" };
-const post = (payload: object) => app.inject({ method: "POST", url: "/expenses", payload });
+const post = (payload: object) => app.inject({ headers, method: "POST", url: "/expenses", payload });
 
-beforeAll(async () => { await app.ready(); });
+beforeAll(async () => { await app.ready();
+  ({ headers } = await signedInAs("approver")); });
 afterAll(async () => { await app.close(); await pool.end(); });
 
 describe("expense categories and validation", () => {
@@ -40,7 +44,7 @@ describe("expense categories and validation", () => {
     expect((await post({ ...valid, spentOn: today })).statusCode).toBe(201);
   });
   it("OB-9: lists expenses with their category", async () => {
-    const res = await app.inject({ method: "GET", url: "/expenses" });
+    const res = await app.inject({ headers, method: "GET", url: "/expenses" });
     expect(res.json().expenses.every((e: { category?: string }) => typeof e.category === "string")).toBe(true);
   });
 });

@@ -1,13 +1,17 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { buildApp } from "../src/app.js";
 import { pool } from "../src/db.js";
+import { signedInAs } from "./fixtures/auth.js";
+
+let headers: Record<string, string> = {};
 
 const app = buildApp();
 const base = { description: "Coffee", category: "meals", currency: "USD", spentOn: "2026-03-02" };
 const post = (amount: string) =>
-  app.inject({ method: "POST", url: "/expenses", payload: { ...base, amount } });
+  app.inject({ headers, method: "POST", url: "/expenses", payload: { ...base, amount } });
 
-beforeAll(async () => { await app.ready(); await pool.query("TRUNCATE expenses"); });
+beforeAll(async () => { await app.ready();
+  ({ headers } = await signedInAs("approver")); await pool.query("TRUNCATE expenses"); });
 afterAll(async () => { await app.close(); await pool.end(); });
 
 describe("money is stored exactly", () => {
@@ -28,7 +32,7 @@ describe("money is stored exactly", () => {
     await pool.query("TRUNCATE expenses");
     await post("0.10");
     await post("0.20");
-    const res = await app.inject({ method: "GET", url: "/expenses" });
+    const res = await app.inject({ headers, method: "GET", url: "/expenses" });
     expect(res.json().total).toBe("0.30");
   });
 });
