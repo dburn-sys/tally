@@ -4,10 +4,10 @@ import { buildApp } from "../src/app.js";
 import { pool } from "../src/db.js";
 import { adminPool } from "../scripts/admin-db.js";
 import { signedInAs } from "./fixtures/auth.js";
-import { fakeProvider, signedWebhook, WEBHOOK_SECRET } from "./fixtures/payouts.js";
+import { fakeProvider, NO_WAIT, signedWebhook, WEBHOOK_SECRET } from "./fixtures/payouts.js";
 
 const provider = fakeProvider();
-const app = buildApp({ provider, webhookSecret: WEBHOOK_SECRET });
+const app = buildApp({ provider, webhookSecret: WEBHOOK_SECRET, payoutRetry: NO_WAIT });
 type Who = Awaited<ReturnType<typeof signedInAs>>;
 let employee: Who, approver: Who, finance: Who;
 
@@ -60,7 +60,7 @@ describe("starting a payout", () => {
     expect((await startPayout(id)).statusCode).toBe(202);
     expect((await startPayout(id)).statusCode).toBe(409);
   });
-  it("AC-5: a provider error fails the payout with 502, and finance can try again", async () => {
+  it("AC-5: a provider refusal fails the payout with 502, and finance can try again", async () => {
     const id = await approvedExpense();
     provider.failNext();
     const failed = await startPayout(id);
