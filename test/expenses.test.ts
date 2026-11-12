@@ -18,7 +18,7 @@ describe("POST /expenses", () => {
     const res = await app.inject({
       method: "POST",
       url: "/expenses",
-      payload: { description: "Team lunch", amount: 84.5, currency: "USD", spentOn: "2026-03-02" },
+      payload: { description: "Team lunch", category: "meals", amount: 84.5, currency: "USD", spentOn: "2026-03-02" },
     });
     expect(res.statusCode).toBe(201);
     expect(res.json().description).toBe("Team lunch");
@@ -28,7 +28,7 @@ describe("POST /expenses", () => {
     const res = await app.inject({
       method: "POST",
       url: "/expenses",
-      payload: { amount: 12, currency: "USD", spentOn: "2026-03-02" },
+      payload: { category: "meals", amount: 12, currency: "USD", spentOn: "2026-03-02" },
     });
     expect(res.statusCode).toBe(400);
   });
@@ -37,7 +37,7 @@ describe("POST /expenses", () => {
 describe("GET /expenses", () => {
   it("lists expenses newest first", async () => {
     await app.inject({ method: "POST", url: "/expenses",
-      payload: { description: "Taxi", amount: 20, currency: "USD", spentOn: "2026-03-03" } });
+      payload: { description: "Taxi", category: "travel", amount: 20, currency: "USD", spentOn: "2026-03-03" } });
     const res = await app.inject({ method: "GET", url: "/expenses" });
     expect(res.statusCode).toBe(200);
     expect(res.json()[0].description).toBe("Taxi");
