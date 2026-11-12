@@ -16,6 +16,7 @@ import { providerFromEnv, type PaymentProvider } from "./payouts/provider.js";
 import { PayoutError, startPayout } from "./payouts/service.js";
 import type { RetryOptions } from "./payouts/retry.js";
 import { registerPayoutWebhook } from "./webhooks/payouts.js";
+import { approvedLastMonthCsv } from "./export/csv.js";
 
 export { CATEGORIES };
 export type AppOptions = {
@@ -141,6 +142,16 @@ export function buildApp(options: AppOptions = {}) {
         [b.description, b.category, cents, b.currency, b.spentOn, req.user!.id],
       ));
       return reply.code(201).send(toApi(rows[0]));
+    });
+
+    // Issue #12: last month's approved expenses for finance's accounting import.
+    secured.get("/exports/expenses.csv", async (req, reply) => {
+      if (req.user!.role !== "finance") return reply.code(403).send({ error: "only finance users can export" });
+      const csv = await withCompany(req.user!.companyId, (db) => approvedLastMonthCsv(db));
+      return reply
+        .header("content-type", "text/csv; charset=utf-8")
+        .header("content-disposition", 'attachment; filename="approved-expenses-last-month.csv"')
+        .send(csv);
     });
 
     secured.get("/me", async (req): Promise<Me> => {
