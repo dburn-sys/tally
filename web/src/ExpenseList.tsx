@@ -51,6 +51,7 @@ export function ExpenseList({ api }: { api: Api }) {
           <li key={e.id}>
             <span>{e.description}</span> <span>{e.category}</span>{" "}
             <span>{e.amount} {e.currency}</span> <span>{e.spentOn}</span>
+            {e.policyWarning && <p aria-label="Policy warning">Policy: {e.policyWarning}</p>}
             {status === "submitted" && (
               <>
                 <button type="button" onClick={() => decide(e.id, "approve")} aria-label={`Approve ${e.description}`}>Approve</button>

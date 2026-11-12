@@ -15,7 +15,12 @@ export type Expense = {
   createdAt: string;
   userId: string | null;
   status: ExpenseStatus;
+  /** Set when the expense broke its category's spending policy at submission. */
+  policyWarning?: string | null;
 };
+
+/** GET /policies */
+export type SpendingPolicy = { category: string; limit: string; currency: string; updatedAt: string };
 
 export type ExpenseList = { expenses: Expense[]; total: string };
 

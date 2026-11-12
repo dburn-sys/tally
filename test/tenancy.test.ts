@@ -60,12 +60,12 @@ describe("company isolation (ADR-0001)", () => {
     expect(role.rows[0]).toEqual({ rolsuper: false, rolbypassrls: false });
     const { rows } = await adminPool.query(
       `SELECT relname FROM pg_class WHERE relname = ANY($1) AND relrowsecurity AND relforcerowsecurity`,
-      [["companies", "users", "api_keys", "expenses", "expense_events", "payouts", "webhook_events"]]);
+      [["companies", "users", "api_keys", "expenses", "expense_events", "payouts", "webhook_events", "spending_policies"]]);
     expect(rows.map((r) => r.relname).sort())
-      .toEqual(["api_keys", "companies", "expense_events", "expenses", "payouts", "users", "webhook_events"]);
+      .toEqual(["api_keys", "companies", "expense_events", "expenses", "payouts", "spending_policies", "users", "webhook_events"]);
   });
   it("AC-7: with no company set, the app role sees nothing", async () => {
-    for (const table of ["companies", "users", "api_keys", "expenses", "expense_events", "payouts", "webhook_events"]) {
+    for (const table of ["companies", "users", "api_keys", "expenses", "expense_events", "payouts", "webhook_events", "spending_policies"]) {
       const { rows } = await pool.query(`SELECT count(*)::int AS n FROM ${table}`);
       expect(rows[0].n, table).toBe(0);
     }

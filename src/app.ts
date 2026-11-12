@@ -17,6 +17,7 @@ import { PayoutError, startPayout } from "./payouts/service.js";
 import type { RetryOptions } from "./payouts/retry.js";
 import { registerPayoutWebhook } from "./webhooks/payouts.js";
 import { approvedLastMonthCsv } from "./export/csv.js";
+import { deletePolicy, listPolicies, PolicyError, policyWarning, setPolicy } from "./policies/service.js";
 
 export { CATEGORIES };
 export type AppOptions = {
@@ -28,7 +29,7 @@ export type AppOptions = {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const COLUMNS = `id, description, category, amount_cents, currency,
-  to_char(spent_on, 'YYYY-MM-DD') AS spent_on, created_at, user_id, status`;
+  to_char(spent_on, 'YYYY-MM-DD') AS spent_on, created_at, user_id, status, policy_warning`;
 
 type ExpenseRow = {
   id: string;
@@ -40,6 +41,7 @@ type ExpenseRow = {
   created_at: string;
   user_id: string | null;
   status: string;
+  policy_warning: string | null;
 };
 
 declare module "fastify" {
@@ -57,6 +59,7 @@ function toApi(row: ExpenseRow): Expense {
     createdAt: row.created_at,
     userId: row.user_id,
     status: row.status as ExpenseStatus,
+    policyWarning: row.policy_warning,
   };
 }
 
@@ -136,10 +139,11 @@ export function buildApp(options: AppOptions = {}) {
       }
       const today = new Date().toISOString().slice(0, 10);
       if (b.spentOn > today) return reply.code(400).send({ error: "spentOn can't be in the future" });
-      const { rows } = await withCompany(req.user!.companyId, (db) => db.query<ExpenseRow>(
-        `INSERT INTO expenses (description, category, amount_cents, currency, spent_on, user_id)
-         VALUES ($1, $2, $3, $4, $5, $6) RETURNING ${COLUMNS}`,
-        [b.description, b.category, cents, b.currency, b.spentOn, req.user!.id],
+      const { rows } = await withCompany(req.user!.companyId, async (db) => db.query<ExpenseRow>(
+        `INSERT INTO expenses (description, category, amount_cents, currency, spent_on, user_id, policy_warning)
+         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING ${COLUMNS}`,
+        [b.description, b.category, cents, b.currency, b.spentOn, req.user!.id,
+         await policyWarning(db, b.category, cents, b.currency)],
       ));
       return reply.code(201).send(toApi(rows[0]));
     });
@@ -152,6 +156,41 @@ export function buildApp(options: AppOptions = {}) {
         .header("content-type", "text/csv; charset=utf-8")
         .header("content-disposition", 'attachment; filename="approved-expenses-last-month.csv"')
         .send(csv);
+    });
+
+    // Issue #30: spending policies. Finance edits; everyone in the company reads (S-1).
+    secured.get("/policies", async (req) => withCompany(req.user!.companyId, (db) => listPolicies(db)));
+
+    const categoryParam = { type: "object", required: ["category"],
+      properties: { category: { type: "string", enum: [...CATEGORIES] } } };
+    secured.put("/policies/:category", {
+      schema: {
+        params: categoryParam,
+        body: { type: "object", required: ["limit", "currency"], additionalProperties: false,
+          properties: { limit: { type: "string" }, currency: { type: "string", pattern: "^[A-Z]{3}$" } } },
+      },
+    }, async (req, reply) => {
+      const { category } = req.params as { category: string };
+      const { limit, currency } = req.body as { limit: string; currency: string };
+      const cents = toCents(limit);
+      if (cents === null || cents <= 0) return reply.code(400).send({ error: "limit must be a positive decimal with at most 2 places" });
+      try {
+        await withCompany(req.user!.companyId, (db) => setPolicy(db, req.user!, category, cents, currency));
+        return reply.code(204).send();
+      } catch (err) {
+        if (err instanceof PolicyError) return reply.code(err.httpStatus).send({ error: err.message });
+        throw err;
+      }
+    });
+    secured.delete("/policies/:category", { schema: { params: categoryParam } }, async (req, reply) => {
+      const { category } = req.params as { category: string };
+      try {
+        await withCompany(req.user!.companyId, (db) => deletePolicy(db, req.user!, category));
+        return reply.code(204).send();
+      } catch (err) {
+        if (err instanceof PolicyError) return reply.code(err.httpStatus).send({ error: err.message });
+        throw err;
+      }
     });
 
     secured.get("/me", async (req): Promise<Me> => {
