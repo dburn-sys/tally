@@ -8,7 +8,12 @@ import { currentUser } from "./auth/context.js";
 import { userForLogin, type User } from "./auth/users.js";
 import { history, transition, TransitionError, type Action } from "./approvals/service.js";
 
-export const CATEGORIES = ["travel", "meals", "lodging", "supplies", "other"] as const;
+import { CATEGORIES } from "./categories.js";
+import { modelFromEnv, type ModelClient } from "./ai/model.js";
+import { MAX_RECEIPT_CHARS, suggestFields } from "./ai/receipts/reader.js";
+
+export { CATEGORIES };
+export type AppOptions = { model?: ModelClient };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const COLUMNS = `id, description, category, amount_cents, currency,
@@ -55,7 +60,8 @@ async function requireUser(req: FastifyRequest, reply: FastifyReply) {
   req.user = user;
 }
 
-export function buildApp() {
+export function buildApp(options: AppOptions = {}) {
+  const model = options.model ?? modelFromEnv();
   const app = Fastify();
 
   app.post("/login", {
@@ -83,6 +89,17 @@ export function buildApp() {
         db.query("INSERT INTO api_keys (user_id, key_hash) VALUES ($1, $2)", [req.user!.id, hashApiKey(key)]));
       return reply.code(201).send({ key });   // shown once; only the hash is stored
     });
+
+    // Suggestions only: the employee confirms and submits through POST /expenses.
+    secured.post("/receipts/suggest", {
+      schema: {
+        body: {
+          type: "object",
+          required: ["text"],
+          properties: { text: { type: "string", minLength: 1, maxLength: MAX_RECEIPT_CHARS } },
+        },
+      },
+    }, async (req) => suggestFields(model, (req.body as { text: string }).text));
 
     secured.post("/expenses", {
       schema: {
