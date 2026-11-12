@@ -5,7 +5,7 @@ import { pool } from "../src/db.js";
 const app = buildApp();
 const today = new Date().toISOString().slice(0, 10);
 const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
-const valid = { description: "Dinner", category: "meals", amount: 40, currency: "USD", spentOn: "2026-03-02" };
+const valid = { description: "Dinner", category: "meals", amount: "40", currency: "USD", spentOn: "2026-03-02" };
 const post = (payload: object) => app.inject({ method: "POST", url: "/expenses", payload });
 
 beforeAll(async () => { await app.ready(); });
@@ -28,10 +28,10 @@ describe("expense categories and validation", () => {
     expect((await post({ ...valid, category: "snacks" })).statusCode).toBe(400);
   });
   it("OB-5: rejects an amount of 0 with 400", async () => {
-    expect((await post({ ...valid, amount: 0 })).statusCode).toBe(400);
+    expect((await post({ ...valid, amount: "0" })).statusCode).toBe(400);
   });
   it("OB-6: rejects a negative amount with 400", async () => {
-    expect((await post({ ...valid, amount: -5 })).statusCode).toBe(400);
+    expect((await post({ ...valid, amount: "-5" })).statusCode).toBe(400);
   });
   it("OB-7: rejects a spentOn date in the future with 400", async () => {
     expect((await post({ ...valid, spentOn: tomorrow })).statusCode).toBe(400);
@@ -41,6 +41,6 @@ describe("expense categories and validation", () => {
   });
   it("OB-9: lists expenses with their category", async () => {
     const res = await app.inject({ method: "GET", url: "/expenses" });
-    expect(res.json().every((e: { category?: string }) => typeof e.category === "string")).toBe(true);
+    expect(res.json().expenses.every((e: { category?: string }) => typeof e.category === "string")).toBe(true);
   });
 });
