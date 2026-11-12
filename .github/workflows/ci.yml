@@ -69,8 +69,13 @@ jobs:
   # whatever tool made it. Set the repository variable GANTRY_REPO (owner/gantry).
   gantry-check:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/checkout@v4
         with:
           repository: ${{ vars.GANTRY_REPO }}
@@ -79,7 +84,18 @@ jobs:
         with:
           python-version: "3.12"
       - name: gantry-check
-        run: python .gantry-tools/ci/gantry_check.py --branch "${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
+        id: check
+        run: |
+          base=""
+          if [ -n "${GITHUB_BASE_REF:-}" ]; then base="--base origin/$GITHUB_BASE_REF"; fi
+          # shellcheck disable=SC2086
+          python .gantry-tools/ci/gantry_check.py --branch "${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}" $base
+      - name: Label PRs that didn't go through Gantry (Chapter 23)
+        if: github.event_name == 'pull_request' && steps.check.outputs.no_gantry_run == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: gh pr edit "$PR" --add-label no-gantry-run
 
   images:
     runs-on: ubuntu-24.04

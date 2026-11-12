@@ -1,0 +1,5 @@
+# Changing a rule that every future change is checked against needs its owners.
+/.gantry/architecture/  @brightwater/architecture
+/.gantry/decisions/     @brightwater/architecture
+/.gantry/standards/     @brightwater/architecture
+/.github/               @brightwater/platform
