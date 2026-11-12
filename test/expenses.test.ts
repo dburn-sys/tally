@@ -10,7 +10,7 @@ const app = buildApp();
 beforeAll(async () => {
   await app.ready();
   ({ headers } = await signedInAs("approver"));
-  await pool.query("TRUNCATE expenses");
+  await pool.query("TRUNCATE expenses CASCADE");
 });
 afterAll(async () => {
   await app.close();

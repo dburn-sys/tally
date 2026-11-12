@@ -2,6 +2,7 @@
 gantry: enabled
 project: tally
 test_command: npm test
+source_dirs: src
 ---
 # Project state
 

@@ -11,7 +11,7 @@ const post = (amount: string) =>
   app.inject({ headers, method: "POST", url: "/expenses", payload: { ...base, amount } });
 
 beforeAll(async () => { await app.ready();
-  ({ headers } = await signedInAs("approver")); await pool.query("TRUNCATE expenses"); });
+  ({ headers } = await signedInAs("approver")); await pool.query("TRUNCATE expenses CASCADE"); });
 afterAll(async () => { await app.close(); await pool.end(); });
 
 describe("money is stored exactly", () => {
@@ -29,7 +29,7 @@ describe("money is stored exactly", () => {
     expect((await post("abc")).statusCode).toBe(400);
   });
   it('OB-4: the total of 0.10 and 0.20 is exactly "0.30"', async () => {
-    await pool.query("TRUNCATE expenses");
+    await pool.query("TRUNCATE expenses CASCADE");
     await post("0.10");
     await post("0.20");
     const res = await app.inject({ headers, method: "GET", url: "/expenses" });
