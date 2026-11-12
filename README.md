@@ -28,6 +28,13 @@ From Chapter 14, Tally uses two database connections (see
   security always applies. `npm run migrate` creates its login password from
   `TALLY_APP_PASSWORD` (default `tally_app`, for local development only).
 
+## Gantry (from Chapter 22)
+
+`.claude/settings.json` points at the Gantry marketplace and enables the plugin,
+so Claude Code offers to install it when you trust this folder. Replace
+`your-account/gantry` with where your copy of the gantry repo lives. Then run
+`/gantry:doctor` once; it should end with "installed and enforcing".
+
 ## The approver dashboard (from Chapter 18)
 
 `web/` is a separate React app with its own dependencies and tests:

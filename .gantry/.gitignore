@@ -3,3 +3,6 @@ unproven.log
 override-token.json
 intent-samples.jsonl
 conformance.jsonl
+metrics.jsonl
+probe.jsonl
+dev-mode.json

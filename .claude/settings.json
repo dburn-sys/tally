@@ -19,5 +19,16 @@
       "Read(./.env)",
       "Read(./.env.*)"
     ]
+  },
+  "extraKnownMarketplaces": {
+    "gantry-tools": {
+      "source": {
+        "source": "github",
+        "repo": "your-account/gantry"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "gantry@gantry-tools": true
   }
 }
