@@ -68,6 +68,14 @@ describe("approver dashboard", () => {
     expect(within(li).getByRole("alert").textContent).toBe("approvers can't decide their own expenses");
   });
 
+  it("AC-6: the dashboard shows a policy warning on the expense's row", async () => {
+    const over = { ...expense("1", "submitted", "Team dinner"), policyWarning: "Over the meals limit of 75.00 USD." };
+    render(<ExpenseList api={fakeApi([over, expense("2", "submitted", "Taxi")])} />);
+    const li = (await screen.findByText("Team dinner")).closest("li")!;
+    expect(within(li).getByLabelText("Policy warning").textContent).toBe("Policy: Over the meals limit of 75.00 USD.");
+    expect(within(screen.getByText("Taxi").closest("li")!).queryByLabelText("Policy warning")).toBeNull();
+  });
+
   it("a slow reply for an old filter can't overwrite the current one", async () => {
     let releaseSubmitted!: () => void;
     const api: Api = {
