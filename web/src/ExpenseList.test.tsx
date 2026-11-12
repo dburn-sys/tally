@@ -7,7 +7,8 @@ import { ExpenseList } from "./ExpenseList";
 afterEach(cleanup);
 
 const expense = (id: string, status: Status, description = `Expense ${id}`): Expense =>
-  ({ id, description, category: "meals", amount: "12.50", currency: "USD", spentOn: "2026-03-02", status });
+  ({ id, description, category: "meals", amount: "12.50", currency: "USD", spentOn: "2026-03-02",
+     createdAt: "2026-03-02T09:00:00Z", userId: "u-1", status });
 
 /** An API whose data lives in memory, recording what the component asked for. */
 function fakeApi(rows: Expense[], refuse: Record<string, ApiError> = {}) {

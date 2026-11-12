@@ -1,14 +1,8 @@
-export type Status = "submitted" | "approved" | "rejected" | "paid";
-export type Expense = {
-  id: string;
-  description: string;
-  category: string;
-  amount: string;
-  currency: string;
-  spentOn: string;
-  status: Status;
-};
-export type Me = { id: string; email: string; role: "employee" | "approver" | "finance" };
+import type { Expense, ExpenseList, ExpenseStatus, Me } from "../../src/contracts/index.js";
+
+// Shared with the API (ADR-0004). Type-only, so nothing from src/ is bundled.
+export type { Expense, Me };
+export type Status = ExpenseStatus;
 
 export class ApiError extends Error {
   constructor(message: string, public readonly status: number) {
@@ -54,7 +48,7 @@ export function httpApi(token: string, base = "/api"): Api {
       return (await call("/me")) as Me;
     },
     async listExpenses(status) {
-      const body = (await call(`/expenses?status=${encodeURIComponent(status)}`)) as { expenses: Expense[] };
+      const body = (await call(`/expenses?status=${encodeURIComponent(status)}`)) as ExpenseList;
       return body.expenses;
     },
     async decide(id, action) {

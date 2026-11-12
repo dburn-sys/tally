@@ -144,3 +144,20 @@ describe("the payout webhook", () => {
     expect(await payoutStatus(payoutId)).toBe("pending");
   });
 });
+
+describe("ADR-0003: one way to mark paid", () => {
+  it("manual pay is refused while a payout is pending", async () => {
+    const id = await approvedExpense();
+    await startPayout(id);
+    const res = await app.inject({ method: "POST", url: `/expenses/${id}/pay`, headers: finance.headers });
+    expect(res.statusCode).toBe(409);
+    expect(await expenseStatus(id)).toBe("approved");
+  });
+  it("manual pay still works after a payout failed", async () => {
+    const id = await approvedExpense();
+    provider.failNext("refused");
+    await startPayout(id);
+    const res = await app.inject({ method: "POST", url: `/expenses/${id}/pay`, headers: finance.headers });
+    expect(res.statusCode).toBe(200);
+  });
+});

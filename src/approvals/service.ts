@@ -35,6 +35,11 @@ export async function transition(
   if (expense.status !== rule.from) {
     throw new TransitionError(409, `expense is ${expense.status}, not ${rule.from}`);
   }
+  if (action === "pay") {
+    // ADR-0003: manual pay is for money paid outside Payrail, never alongside a payout.
+    const live = await db.query("SELECT 1 FROM payouts WHERE expense_id = $1 AND status <> 'failed'", [expenseId]);
+    if (live.rowCount) throw new TransitionError(409, "this expense has a payout; the provider's webhook marks it paid");
+  }
   await db.query("UPDATE expenses SET status = $1 WHERE id = $2", [rule.to, expenseId]);
   await db.query(
     `INSERT INTO expense_events (expense_id, actor_id, from_status, to_status)
