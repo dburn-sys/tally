@@ -32,6 +32,9 @@ expenses; later, managers approve them and finance pays them out.
 - MUST put database changes in a new numbered file in `migrations/`.
   MUST NOT edit an existing migration, even to fix a typo. Databases
   that already ran it won't run it again.
+- MUST run every query for a request inside `withCompany()` (ADR-0001).
+  A new company-owned table MUST get company_id, ENABLE and FORCE ROW
+  LEVEL SECURITY, and a policy, in the migration that creates it.
 - MUST NOT commit. The user commits.
 - If a check can't run (database down, tool missing, timeout), MUST
   stop and report the error in one line. MUST NOT change code, tests,

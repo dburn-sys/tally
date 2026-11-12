@@ -14,6 +14,16 @@ Requirements: Node 22+, Docker (for Postgres), and Python 3.10+ from Chapter 9 o
 ```bash
 npm install
 docker compose up -d
+cp .env.example .env   # optional; the defaults match docker compose
 npm run migrate
 npm test
 ```
+
+From Chapter 14, Tally uses two database connections (see
+`.gantry/decisions/0001-tenancy-rls.md`):
+
+- `MIGRATION_DATABASE_URL` connects as the table owner. Only `npm run migrate` and test
+  setup use it.
+- `DATABASE_URL` connects as `tally_app`, a role that owns no tables, so row-level
+  security always applies. `npm run migrate` creates its login password from
+  `TALLY_APP_PASSWORD` (default `tally_app`, for local development only).

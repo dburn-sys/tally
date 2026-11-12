@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { buildApp } from "../src/app.js";
 import { pool } from "../src/db.js";
+import { adminPool } from "../scripts/admin-db.js";
 import { signedInAs } from "./fixtures/auth.js";
 
 const app = buildApp();
@@ -20,7 +21,7 @@ beforeAll(async () => {
   [employee, approver, otherApprover, finance] = await Promise.all(
     (["employee", "approver", "approver", "finance"] as const).map((r) => signedInAs(r)));
 });
-afterAll(async () => { await app.close(); await pool.end(); });
+afterAll(async () => { await app.close(); await pool.end(); await adminPool.end(); });
 
 describe("approval workflow", () => {
   it("AC-1: new expenses are submitted", async () => {
@@ -72,7 +73,7 @@ describe("approval workflow", () => {
   it("AC-10: an expense from a submitter who has left can still be decided", async () => {
     const e = await submit(employee);
     // "Left" means the account can no longer sign in; the expense and its submitter remain.
-    await pool.query("UPDATE users SET password_hash = 'disabled' WHERE id = $1", [employee.user.id]);
+    await adminPool.query("UPDATE users SET password_hash = 'disabled' WHERE id = $1", [employee.user.id]);
     expect((await act(e.id, "approve", approver)).statusCode).toBe(200);
   });
 });
