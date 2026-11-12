@@ -9,6 +9,7 @@ import { userForLogin, type User } from "./auth/users.js";
 import { history, transition, TransitionError, type Action } from "./approvals/service.js";
 
 import { CATEGORIES } from "./categories.js";
+import type { Expense, ExpenseStatus, Me } from "./contracts/index.js";
 import { modelFromEnv, type ModelClient } from "./ai/model.js";
 import { MAX_RECEIPT_CHARS, suggestFields } from "./ai/receipts/reader.js";
 import { providerFromEnv, type PaymentProvider } from "./payouts/provider.js";
@@ -44,7 +45,7 @@ declare module "fastify" {
   interface FastifyRequest { user?: User }
 }
 
-function toApi(row: ExpenseRow) {
+function toApi(row: ExpenseRow): Expense {
   return {
     id: row.id,
     description: row.description,
@@ -54,7 +55,7 @@ function toApi(row: ExpenseRow) {
     spentOn: row.spent_on,
     createdAt: row.created_at,
     userId: row.user_id,
-    status: row.status,
+    status: row.status as ExpenseStatus,
   };
 }
 
@@ -142,7 +143,7 @@ export function buildApp(options: AppOptions = {}) {
       return reply.code(201).send(toApi(rows[0]));
     });
 
-    secured.get("/me", async (req) => {
+    secured.get("/me", async (req): Promise<Me> => {
       const { id, email, role } = req.user!;
       return { id, email, role };
     });
