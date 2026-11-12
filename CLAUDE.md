@@ -1,7 +1,5 @@
 # Tally
 
-@../gantry/ORCHESTRATOR.md
-
 ## What this is
 Tally is an expense tracking API for small companies. Employees record
 expenses; later, managers approve them and finance pays them out.
