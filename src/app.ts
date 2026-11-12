@@ -5,12 +5,13 @@ import { hashApiKey, newApiKey } from "./auth/apikeys.js";
 import { verifyPassword } from "./auth/password.js";
 import { createSessionToken } from "./auth/session.js";
 import { userFromHeaders, type User } from "./auth/users.js";
+import { history, transition, TransitionError, type Action } from "./approvals/service.js";
 
 export const CATEGORIES = ["travel", "meals", "lodging", "supplies", "other"] as const;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const COLUMNS = `id, description, category, amount_cents, currency,
-  to_char(spent_on, 'YYYY-MM-DD') AS spent_on, created_at, user_id`;
+  to_char(spent_on, 'YYYY-MM-DD') AS spent_on, created_at, user_id, status`;
 
 type ExpenseRow = {
   id: string;
@@ -21,6 +22,7 @@ type ExpenseRow = {
   spent_on: string;
   created_at: string;
   user_id: string | null;
+  status: string;
 };
 
 declare module "fastify" {
@@ -37,6 +39,7 @@ function toApi(row: ExpenseRow) {
     spentOn: row.spent_on,
     createdAt: row.created_at,
     userId: row.user_id,
+    status: row.status,
   };
 }
 
@@ -132,6 +135,25 @@ export function buildApp() {
         return reply.code(404).send({ error: "not found" });
       }
       return toApi(row);
+    });
+
+    for (const action of ["approve", "reject", "pay"] as Action[]) {
+      secured.post(`/expenses/:id/${action}`, async (req, reply) => {
+        const { id } = req.params as { id: string };
+        if (!UUID.test(id)) return reply.code(400).send({ error: "id must be a UUID" });
+        try {
+          return { status: await transition(id, req.user!, action) };
+        } catch (err) {
+          if (err instanceof TransitionError) return reply.code(err.httpStatus).send({ error: err.message });
+          throw err;
+        }
+      });
+    }
+
+    secured.get("/expenses/:id/history", async (req, reply) => {
+      const { id } = req.params as { id: string };
+      if (!UUID.test(id)) return reply.code(400).send({ error: "id must be a UUID" });
+      return history(id);
     });
   });
 
