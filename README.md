@@ -39,6 +39,16 @@ npm test          # component tests, no API needed
 npm run dev       # http://localhost:5173, with /api proxied to the API on port 3000
 ```
 
+## Deploying (from Chapter 19)
+
+`infra/` is Terraform for Azure (see `infra/README.md`). Before the first build:
+
+```bash
+./scripts/pin-images.sh      # pins the Dockerfile's base images by digest (rule E-1)
+```
+
+Telemetry is off unless `OTEL_EXPORTER_OTLP_ENDPOINT` is set.
+
 ## Notes on the chapters
 
 - **Chapter 15.** The book's bug (self-approval through API keys) comes from a
@@ -47,3 +57,8 @@ npm run dev       # http://localhost:5173, with /api proxied to the API on port 
   tag still adds the regression tests from the chapter
   (`test/approvals.apikey.test.ts`) and the fix's shape, `src/auth/context.ts`,
   the single place that builds the current user.
+- **Chapter 19.** The Dockerfile's base images aren't pinned by digest yet, because
+  the companion was built without registry access. That's the one open item in
+  Section E: run `scripts/pin-images.sh`, then `/gantry:conformance`. Until then,
+  Gantry's G-ARCH gate refuses commits that touch Section E, which is the gate doing
+  its job.
