@@ -39,3 +39,11 @@ expenses; later, managers approve them and finance pays them out.
 - If a check can't run (database down, tool missing, timeout), MUST
   stop and report the error in one line. MUST NOT change code, tests,
   mocks, or config to get around it.
+
+## Gantry
+This repository uses Gantry. Work enters through a lane (feature, fix, chore,
+refactor, spike), and commits go through the commit gate.
+- Test command: `npm test`
+- Not source: see `not_source` in `.gantry/context.md`
+- Architecture: present, in `.gantry/architecture/` (sections A to E)
+Run /gantry:status to see where things stand.
