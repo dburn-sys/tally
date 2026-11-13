@@ -4,7 +4,7 @@
 # a different image. Run scripts/pin-images.sh once (it needs Docker and registry
 # access) to replace the tag below with tag@sha256:<digest>, and again whenever
 # you deliberately move to a newer Node image. CI fails until it's pinned.
-FROM node:22.23.4-bookworm-slim AS build
+FROM node:22.23.4-bookworm-slim@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -13,7 +13,7 @@ COPY src ./src
 COPY scripts ./scripts
 RUN npx tsc -p tsconfig.build.json && npm prune --omit=dev
 
-FROM node:22.23.4-bookworm-slim
+FROM node:22.23.4-bookworm-slim@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=build /app/node_modules ./node_modules
